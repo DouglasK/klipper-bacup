@@ -1,0 +1,349 @@
+  
+######################################################################
+# Author : Douglas K 
+# Printer configuration file of Klipper
+# email : tochandan@icloud.com
+# Ender 3 pro
+#       + BLTOUCH 
+#       + Octoprint
+#       + Ditect Drive 3d printed 
+#       + BTT SKR 1.4 Turbo TMC 2209
+#       + Stock Ender 3 pro LCD
+###################################################################### 
+# Version 1.    ; Octopi - Installed Klipper plugin and setup connection 
+# Version 1.1   ; Push to Raspberry test VS CODE 
+# Version 1.1.3 : Reformat to basic
+# Version 2     : Adjust bed size to accomodate 3d printed direct drive unit in x
+# Version 2.1   : set and perform Assisted Bed leveling in Octo print using Klipper plugin
+# Version 2.1.2 : update Github , and Raspberry with comments
+#
+# Version 2.2.2 : added pause_resume_cancel capability for multi-filament prints
+#
+#
+#
+######################################################################
+# OCTOPI SETTINGS
+# Klipper assisted bed leveling setting in octopi
+# probe points  : Left front = 60 , 60  
+#                 Right front = 190, 60
+#                 Left rear   = 60 , 190                
+#                 Right rear  = 190 ,190
+#                 Probe height = 0.4 # unique number
+
+# BED visualiser plugin setting  : STRICTLY ON OCTOPI .
+                ## G28
+                ## M115 S30
+                ## M190 S60
+                ## @BEDLEVELVISUALIZER
+                ## G29 T
+                ## BED_MESH_OUTPUT
+
+# type SAVE_CONFIG in terminal to save the measured setting (See Printer.cfg)
+######################################################################
+
+
+[include mainsail.cfg]
+[include m600.cfg]
+
+## Customization:
+##   1) copy the gcode_macro _CLIENT_VARIABLE (see below) to your printer.cfg
+##   2) remove the comment mark (#) from all lines
+##   3) change any value in there to your needs
+##
+## Use the PAUSE macro direct in your M600:
+##  e.g. with a different park position front left and a minimal height of 50 
+[gcode_macro M600]
+    description: Filament change
+    gcode: 
+      PAUSE X=10 Y=10 Z_MIN=50
+
+##  Z_MIN will park the toolhead at a minimum of 50 mm above to bed to make it easier for you to swap filament.
+##
+## Client variable macro for your printer.cfg
+[gcode_macro _CLIENT_VARIABLE]
+variable_use_custom_pos   : False ; use custom park coordinates for x,y [True/False]
+variable_custom_park_x    : 0.0   ; custom x position; value must be within your defined min and max of X
+variable_custom_park_y    : 0.0   ; custom y position; value must be within your defined min and max of Y
+variable_custom_park_dz   : 2.0   ; custom dz value; the value in mm to lift the nozzle when move to park position
+variable_retract          : 1.0   ; the value to retract while PAUSE
+variable_cancel_retract   : 1.0   ; the value to retract while CANCEL_PRINT
+variable_speed_retract    : 35.0  ; retract speed in mm/s
+variable_unretract        : 1.0   ; the value to unretract while RESUME
+variable_speed_unretract  : 35.0  ; unretract speed in mm/s
+variable_speed_hop        : 15.0  ; z move speed in mm/s
+variable_speed_move       : 100.0 ; move speed in mm/s
+variable_park_at_cancel   : False ; allow to move the toolhead to park while execute CANCEL_PRINT [True/False]
+variable_park_at_cancel_x : None  ; different park position during CANCEL_PRINT [None/Position as Float]; park_at_cancel must be True
+variable_park_at_cancel_y : None  ; different park position during CANCEL_PRINT [None/Position as Float]; park_at_cancel must be True
+## !!! Caution [firmware_retraction] must be defined in the printer.cfg if you set use_fw_retract: True !!!
+variable_use_fw_retract   : False ; use fw_retraction instead of the manual version [True/False]
+variable_idle_timeout     : 0     ; time in sec until idle_timeout kicks in. Value 0 means that no value will be set or restored
+gcode:
+
+[pause_resume]
+
+######################################## FAN PIN 
+[fan]
+pin: P2.3
+######################################## Connection with My SKR 1.4 turbo 
+[mcu] # Unique 
+serial: /dev/serial/by-id/usb-Klipper_lpc1769_09C0001580A037AFA9D9BF5BC52000F5-if00
+# serial: /dev/serial0
+######################################## 
+################# Related to BL touch Start ####################### 
+[gcode_macro G29]
+gcode:
+    BED_MESH_CALIBRATE
+
+[bed_screws]
+screw1: 30.5,30.5
+screw2: 200.5,30.5
+screw3: 200.5,200.5
+screw4: 30.5,200.5
+
+######################################## 
+# BL-Touch, Mesh and Homing Configuration does not pull the pin complete
+########################################
+[bltouch]
+sensor_pin: P0.10 #Probe
+control_pin: P2.0 #SERVOS
+stow_on_each_sample: False # this is not retract the pin 
+probe_with_touch_mode: True
+set_output_mode: 5V
+x_offset: -30.5 
+y_offset: -3
+speed: 5 # slow is better
+samples: 1
+sample_retract_dist: 5.0 # previous value 4
+ 
+[bed_mesh]
+speed: 120 
+horizontal_move_z: 5
+mesh_min: 5,5
+mesh_max: 220,220 # very imp to give rough estimate consider x_offset
+probe_count: 5,5
+fade_start: 1
+fade_end: 10
+algorithm: bicubic
+
+[safe_z_home]
+home_xy_position: 138.5 ,117.5  #155,120 ; set by using assisted bed leveling klipper 
+speed: 25.0 #80 ; # think ignored
+z_hop: 10.0
+z_hop_speed: 10
+################# Related to BL touch END ####################### 
+[printer]
+kinematics: cartesian
+max_velocity: 400
+max_accel: 500
+max_z_velocity: 10
+max_z_accel: 100
+
+########################################
+[stepper_x]
+step_pin: P2.2
+dir_pin: !P2.6 #  x home to left
+enable_pin: !P2.1
+microsteps: 16
+rotation_distance: 40
+# endstop_pin: P1.29 # commented out due using sensorless homing
+endstop_pin: tmc2209_stepper_x:virtual_endstop # P1.29
+position_endstop: -5
+position_min: -5
+# position_max: 235
+position_max: 265.5
+homing_speed: 25
+homing_retract_dist: 0
+
+[tmc2209 stepper_x]
+uart_pin: P1.10
+interpolate: True
+run_current: 0.580
+hold_current: 0.290
+stealthchop_threshold: 250
+diag_pin: ^P1.29
+# driver_SGTHRS: 53 # 255 is most sensitive value, 0 is least sensitiv
+driver_SGTHRS: 60  # 255 is most sensitive value, 0 is least sensitive
+
+
+[stepper_y]
+step_pin: P0.19
+dir_pin: !P0.20 # y home to back
+enable_pin: !P2.8
+microsteps: 16
+rotation_distance: 40
+# endstop_pin: P1.28 # commented out due to using sensorless homing
+endstop_pin: tmc2209_stepper_y:virtual_endstop # P1.28
+position_endstop: 0
+position_min: 0
+position_max: 235
+homing_speed: 25
+homing_retract_dist: 0
+
+[tmc2209 stepper_y]
+uart_pin: P1.9
+interpolate: True
+run_current: 0.580
+hold_current: 0.290
+stealthchop_threshold: 250
+diag_pin: ^P1.28
+driver_SGTHRS: 70 # 50 # 255 is most sensitive value, 0 is least sensitive
+
+[stepper_z]
+step_pin: P0.22
+dir_pin: P2.11
+enable_pin: !P0.21
+microsteps: 16
+# rotation_distance: 8 # pre-2023/06/03 00:45
+rotation_distance: 7.108 # actual from calculation: 7.24061162079511
+#endstop_pin: !P1.27 # commented becuase using BL Touch
+endstop_pin: probe:z_virtual_endstop
+position_max: 180
+position_min: -2
+
+[tmc2209 stepper_z]
+uart_pin: P1.8
+interpolate: True
+run_current: 0.580
+hold_current: 0.290
+stealthchop_threshold: 250
+
+[extruder]
+step_pin: P2.13
+dir_pin: !P0.11
+enable_pin: !P2.12
+microsteps: 16
+# rotation_distance: 33.500
+rotation_distance: 23.296
+nozzle_diameter: 0.400
+filament_diameter: 1.750
+heater_pin: P2.7
+sensor_type: EPCOS 100K B57560G104F
+sensor_pin: P0.24
+#control: pid
+#pid_Kp: 22.2
+#pid_Ki: 1.08
+#pid_Kd: 114
+min_temp: 0
+max_temp: 260
+# Sept 14, 2023, set max extrude distance to 100mm to allow for easy 
+#
+nozzle_diameter: 0.4
+#   Diameter of the nozzle orifice (in mm). This parameter must be
+#   provided.
+filament_diameter: 1.75
+#   The nominal diameter of the raw filament (in mm) as it enters the
+#   extruder. This parameter must be provided.
+#max_extrude_cross_section:
+#   Maximum area (in mm^2) of an extrusion cross section (eg,
+#   extrusion width multiplied by layer height). This setting prevents
+#   excessive amounts of extrusion during relatively small XY moves.
+#   If a move requests an extrusion rate that would exceed this value
+#   it will cause an error to be returned. The default is: 4.0 *
+#   nozzle_diameter^2
+# filament changes and calibration using 100mm of filament..
+max_extrude_only_distance: 100.0
+
+[tmc2209 extruder]
+uart_pin: P1.4
+interpolate: True
+run_current: 0.660
+hold_current: 0.5 #0.330
+
+[heater_bed]
+heater_pin: P2.5
+sensor_type: EPCOS 100K B57560G104F
+sensor_pin: P0.25
+control: pid
+pid_Kp: 54.027
+pid_Ki: 0.770
+pid_Kd: 948.182
+min_temp: 0
+max_temp: 130
+
+######################################## PIN CONFIG for display not used  
+[board_pins]
+aliases:
+    # EXP1 header
+    EXP1_1=P1.30, EXP1_3=P1.18, EXP1_5=P1.20, EXP1_7=P1.22, EXP1_9=<GND>,
+    EXP1_2=P0.28, EXP1_4=P1.19, EXP1_6=P1.21, EXP1_8=P1.23, EXP1_10=<5V>,
+    # EXP2 header
+    EXP2_1=P0.17, EXP2_3=P3.26, EXP2_5=P3.25, EXP2_7=P1.31, EXP2_9=<GND>,
+    EXP2_2=P0.15, EXP2_4=P0.16, EXP2_6=P0.18, EXP2_8=<RST>, EXP2_10=<NC>
+    # Pins EXP2_1, EXP2_6, EXP2_2 are also MISO, MOSI, SCK of bus "ssp0"
+
+# See the sample-lcd.cfg file for definitions of common LCD displays.
+[display]
+lcd_type: st7920
+cs_pin: P1.19
+sclk_pin: P1.21
+sid_pin: P1.23
+encoder_pins: ^P1.18, ^P1.20
+click_pin: !P0.28
+
+########################################
+
+########################################
+# TMC2209 configuration( Default)
+########################################
+
+#[tmc2209 stepper_x]
+#uart_pin: P1.10
+#run_current: 0.800
+#hold_current: 0.500
+#stealthchop_threshold: 999999
+#
+#[tmc2209 stepper_y]
+#uart_pin: P1.9
+#run_current: 0.800
+#hold_current: 0.500
+#stealthchop_threshold: 999999
+#
+#[tmc2209 stepper_z]
+#uart_pin: P1.8
+#run_current: 0.650
+#hold_current: 0.450
+#stealthchop_threshold: 999999
+#
+#[tmc2209 extruder]
+#uart_pin: P1.4
+#run_current: 0.800
+#hold_current: 0.500
+#stealthchop_threshold: 999999
+#
+#[tmc2209 extruder1]
+#uart_pin: P1.1
+#run_current: 0.800
+#hold_current: 0.500
+#stealthchop_threshold: 999999
+
+#*# <---------------------- SAVE_CONFIG ---------------------->
+#*# DO NOT EDIT THIS BLOCK OR BELOW. The contents are auto-generated.
+#*#
+#*# [bed_mesh default]
+#*# version = 1
+#*# points =
+#*# 	  -0.355400, -0.477569, -0.639720, -0.868509, -1.319423
+#*# 	  0.122169, -0.057753, -0.328745, -0.633056, -1.161714
+#*# 	  0.599737, 0.370949, -0.055531, -0.464241, -1.088413
+#*# 	  0.997341, 0.666375, 0.235452, -0.255444, -0.941810
+#*# 	  1.343856, 0.895164, 0.448692, -0.057753, -0.755225
+#*# tension = 0.2
+#*# min_x = 5.0
+#*# algo = bicubic
+#*# y_count = 5
+#*# mesh_y_pps = 2
+#*# min_y = 5.0
+#*# x_count = 5
+#*# max_y = 220.0
+#*# mesh_x_pps = 2
+#*# max_x = 220.0
+#*#
+#*# [bltouch]
+#*# z_offset = 1.850
+#*#
+#*# [extruder]
+#*# control = pid
+#*# pid_kp = 23.287
+#*# pid_ki = 1.142
+#*# pid_kd = 118.762
